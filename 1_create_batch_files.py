@@ -1,11 +1,33 @@
 import os
 import base64
 import json
+import numpy as np
+from tqdm import tqdm
 from collections import defaultdict
+import matplotlib.patches as patches
+from matplotlib import pyplot as plt
 
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
+    
+def compute_polygon_centroid(polygon):
+    """
+    polygon: List of [x1, y1, x2, y2, ..., xn, yn]
+    """
+    points = np.array(polygon).reshape(-1, 2)
+    x = points[:, 0]
+    y = points[:, 1]
+
+    # Shoelace formula
+    a = x[:-1] * y[1:] - x[1:] * y[:-1]
+    A = np.sum(a) / 2.0
+
+
+    cx = np.sum((x[:-1] + x[1:]) * a) / (6.0 * A)
+    cy = np.sum((y[:-1] + y[1:]) * a) / (6.0 * A)
+
+    return cx, cy
 
 prompt = open("prompt.txt", "r").read()
 
@@ -27,30 +49,77 @@ item = {
 }
 
 data_root = "data/CrowdAI"
-data_split = "train" # "val"
+data_split = "val" # "val", "train"
 
 image_dir = os.path.join(data_root, data_split, "images")
+output_jsonl = f"CrowdAI_{data_split}_batch.jsonl"
 
 # 读取标注文件
-with open(os.path.join(data_root, data_split, "annotation.json"), "r") as f:
+with open(os.path.join(data_root, data_split, "annotation-small.json"), "r") as f:
     annotations = json.load(f)
 
 # 按图像ID组织标注数据
-image_annotations = defaultdict(list)
-for ann in annotations["annotations"]:
-    image_annotations[ann["image_id"]].append(ann)
+print("loading annotations...")
+image_annotations = defaultdict(dict)
+for ann in tqdm(annotations["images"]):
+    if os.path.exists(os.path.join(data_root, data_split, "images", ann["file_name"])):
+        image_annotations[ann["id"]] = {
+            "annotations": [],
+            "image_path": ann["file_name"],
+        }
 
-import pdb; pdb.set_trace()
+for ann in tqdm(annotations["annotations"]):
+    if ann["image_id"] in image_annotations:
+        image_annotations[ann["image_id"]]["annotations"].append(ann)
 
-for image_file in os.listdir(image_dir):
-    image_path = os.path.join(image_dir, image_file)
+
+# 初始化计数器和文件索引
+count = 0
+file_index = 0
+current_output_jsonl = f"{output_jsonl.split('.')[0]}_{file_index}.jsonl"
+
+for anno in tqdm(image_annotations):
+    image_path = image_annotations[anno]["image_path"]
+    image_path = os.path.join(data_root, data_split, "images", image_path)
+    
+    # 为了与原代码保持一致，仍然创建objs列表
+    objs = []
+    for obj in image_annotations[anno]["annotations"]:
+        x, y = compute_polygon_centroid(obj["segmentation"])
+        if np.isnan(x) or np.isnan(y):
+            continue
+
+        center_x = int(x)
+        center_y = int(y)
+
+        obj_index = obj["id"]
+        obj_category = "building"
+        # obj_category = obj["category_id"]
+        objs.append(f"{obj_index} {obj_category} [{center_x},{center_y}]")
+    
     image_base64 = encode_image(image_path)
     item["body"]["messages"][1]["content"].append({
         "type": "input_image",
         "image_url": f"data:image/jpeg;base64,{image_base64}",
     })
-    
 
+    
+    item["body"]["messages"][1]["content"].append({
+        "type": "text",
+        "text": prompt.replace("<objects>", "\n".join(objs)),
+    })
+
+    with open(current_output_jsonl, "a") as f:
+        f.write(json.dumps(item) + "\n")
+    
+    # 每处理500条数据后，创建新的jsonl文件
+    count += 1
+    if count >= 500:
+        count = 0
+        file_index += 1
+        current_output_jsonl = f"{output_jsonl.split('.')[0]}_{file_index}.jsonl"
+        print(f"创建新文件: {current_output_jsonl}")
+    
 
 
 

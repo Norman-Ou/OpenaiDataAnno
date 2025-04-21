@@ -4,5 +4,5 @@ For objects that are in a linear arrangement, use descriptors such as 'farthest 
 When describing an isolated object or a cluster, reference its position in relation to image, not to objects.
 You will be given a list of entities, each representing an object in the image:
 <objects>
-These entities include a class name and center point coordinates in the format (x_center, y_center). 
+These entities include a object id, class name, and center point coordinates in the format (x_center, y_center). 
 Your goal is to provide a clear and distinct description for each object, determining whether they are clustered or isolated, and following the examples provided. Each description must be a concise phrase and MUST use the class name as the subject. Descriptions MUST only relate an object of the same class or to the image, not to objects of different classes.

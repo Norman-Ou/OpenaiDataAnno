@@ -4,7 +4,7 @@ import glob
 
 client = OpenAI()
 
-jsonl_files = glob.glob("*.jsonl")
+jsonl_files = glob.glob("input_jsonl/*.jsonl")
 
 for jsonl_file in jsonl_files:
     batch_input_file = client.files.create(
@@ -13,6 +13,7 @@ for jsonl_file in jsonl_files:
     )
     print(jsonl_file)
     print("upload file: ", batch_input_file.id)
+    import pdb; pdb.set_trace()
 
     batch_job = client.batches.create(
         input_file_id=batch_input_file.id,

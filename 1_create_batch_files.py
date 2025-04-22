@@ -48,7 +48,7 @@ item = {
     "max_tokens": 1000}
 }
 
-data_root = "data/CrowdAI"
+data_root = "data/crowdai"
 data_split = "train" # "val", "train"
 
 image_dir = os.path.join(data_root, data_split, "images")

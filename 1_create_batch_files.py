@@ -49,10 +49,12 @@ item = {
 }
 
 data_root = "data/CrowdAI"
-data_split = "val" # "val", "train"
+data_split = "train" # "val", "train"
 
 image_dir = os.path.join(data_root, data_split, "images")
-output_jsonl = f"CrowdAI_{data_split}_batch.jsonl"
+output_jsonl = f"input_jsonl/CrowdAI_{data_split}_batch.jsonl"
+os.makedirs("input_jsonl", exist_ok=True)
+os.makedirs(f"input_txt/{data_split}", exist_ok=True)
 
 # 读取标注文件
 with open(os.path.join(data_root, data_split, "annotation-small.json"), "r") as f:
@@ -78,13 +80,15 @@ count = 0
 file_index = 0
 current_output_jsonl = f"{output_jsonl.split('.')[0]}_{file_index}.jsonl"
 
-for anno in tqdm(image_annotations):
+# for anno in tqdm(image_annotations):
+for anno in image_annotations:
     image_path = image_annotations[anno]["image_path"]
     image_path = os.path.join(data_root, data_split, "images", image_path)
+    data_id = os.path.basename(image_path).split('.')[0]
     
     # 为了与原代码保持一致，仍然创建objs列表
     objs = []
-    for obj in image_annotations[anno]["annotations"]:
+    for ins_index, obj in enumerate(image_annotations[anno]["annotations"]):
         x, y = compute_polygon_centroid(obj["segmentation"])
         if np.isnan(x) or np.isnan(y):
             continue
@@ -92,33 +96,43 @@ for anno in tqdm(image_annotations):
         center_x = int(x)
         center_y = int(y)
 
-        obj_index = obj["id"]
+        # obj_index = obj["id"]
+        obj_index = ins_index
         obj_category = "building"
         # obj_category = obj["category_id"]
         objs.append(f"{obj_index} {obj_category} [{center_x},{center_y}]")
+
+    item['custom_id'] = data_id
     
-    image_base64 = encode_image(image_path)
-    item["body"]["messages"][1]["content"].append({
-        "type": "input_image",
-        "image_url": f"data:image/jpeg;base64,{image_base64}",
-    })
+    # image_base64 = encode_image(image_path)
+    # item["body"]["messages"][1]["content"].append({
+    #     "type": "input_image",
+    #     "image_url": f"data:image/jpeg;base64,{image_base64}",
+    # })
+
+    objs_str = "\n".join(objs)
+    # print(objs_str)
+    # print()
+
+    with open(f"input_txt/{data_split}/{data_id}.txt", "w") as f:
+        f.write(prompt.replace("<objects>", objs_str))
 
     
     item["body"]["messages"][1]["content"].append({
         "type": "text",
-        "text": prompt.replace("<objects>", "\n".join(objs)),
+        "text": prompt.replace("<objects>", objs_str),
     })
 
-    with open(current_output_jsonl, "a") as f:
-        f.write(json.dumps(item) + "\n")
+    # with open(current_output_jsonl, "a") as f:
+    #     f.write(json.dumps(item) + "\n")
     
-    # 每处理500条数据后，创建新的jsonl文件
-    count += 1
-    if count >= 500:
-        count = 0
-        file_index += 1
-        current_output_jsonl = f"{output_jsonl.split('.')[0]}_{file_index}.jsonl"
-        print(f"创建新文件: {current_output_jsonl}")
+    # # 每处理500条数据后，创建新的jsonl文件
+    # count += 1
+    # if count >= 1000:
+    #     count = 0
+    #     file_index += 1
+    #     current_output_jsonl = f"{output_jsonl.split('.')[0]}_{file_index}.jsonl"
+    #     print(f"创建新文件: {current_output_jsonl}")
     
 
 

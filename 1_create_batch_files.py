@@ -123,16 +123,16 @@ for anno in image_annotations:
         "text": prompt.replace("<objects>", objs_str),
     })
 
-    # with open(current_output_jsonl, "a") as f:
-    #     f.write(json.dumps(item) + "\n")
+    with open(current_output_jsonl, "a") as f:
+        f.write(json.dumps(item) + "\n")
     
-    # # 每处理500条数据后，创建新的jsonl文件
-    # count += 1
-    # if count >= 1000:
-    #     count = 0
-    #     file_index += 1
-    #     current_output_jsonl = f"{output_jsonl.split('.')[0]}_{file_index}.jsonl"
-    #     print(f"创建新文件: {current_output_jsonl}")
+    # 每处理500条数据后，创建新的jsonl文件
+    count += 1
+    if count >= 1000:
+        count = 0
+        file_index += 1
+        current_output_jsonl = f"{output_jsonl.split('.')[0]}_{file_index}.jsonl"
+        print(f"创建新文件: {current_output_jsonl}")
     
 
 

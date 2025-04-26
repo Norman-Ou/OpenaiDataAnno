@@ -1,6 +1,10 @@
 __pycache__
 data
-input_jsonl
-input_txt
+input_jsonl/*
+!input_jsonl/.gitkeep
+input_txt/*
+!input_txt/.gitkeep
+output_jsonl/*
+!output_jsonl/.gitkeep
 
 *.jsonl

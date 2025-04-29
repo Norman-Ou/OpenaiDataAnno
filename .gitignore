@@ -8,3 +8,7 @@ output_jsonl/*
 !output_jsonl/.gitkeep
 
 *.jsonl
+*.json
+*.png
+
+.env
